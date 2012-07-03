@@ -119,12 +119,47 @@ public class MeineStadtAnalyser {
     }
 
     private ArrayList<String> getStreets(String city) {
+
         final ArrayList<String> result = new ArrayList<String>();
-        try {
-            for(char i = 'a'; i <= 'z'; i++){
-                String href = "http://www.meinestadt.de/" + city + "/stadtplan/strassenverzeichnis/" + i;
-                //System.out.println("analying: " + href);
-                URL url = new URL(href);
+
+        for(char i = 'a'; i <= 'z'; i++){
+            String href = "http://www.meinestadt.de/" + city + "/stadtplan/strassenverzeichnis/" + i;
+            //System.out.println("analying: " + href);
+            new StreetExtractor(href) {
+                @Override
+                public void finished(ArrayList<String> streets) {
+                    result.addAll(streets);
+                    running--;
+                }
+            }.start();
+            running++;
+        }
+
+        //wait for threads finishing:
+        while(running > 0){
+
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+        }
+        return result;
+    }
+
+    abstract class StreetExtractor extends Thread{
+
+        ArrayList<String> streets = new ArrayList<String>();
+        private String href;
+
+        protected StreetExtractor(String href) {
+            this.href = href;
+        }
+
+        public void run() {
+            URL url = null;
+            try {
+                url = new URL(href);
                 URLConnection urlConnection = null;
                 urlConnection = url.openConnection();
                 Parser parser = new Parser(new Lexer(new Page(urlConnection)));
@@ -135,20 +170,26 @@ public class MeineStadtAnalyser {
                             if(tag.getAttribute("href") != null)
                                 if(tag.getAttribute("href").contains("stadtplan/strasse/")){
                                     String street = tag.getFirstChild().toHtml().replace("str.", "straﬂe").replace("Str.", "Straﬂe").trim();
-                                    result.add(street);
+                                    streets.add(street);
                                 }
                         }
                     }
-                });
 
+                    @Override
+                    public void finishedParsing() {
+                        finished(streets);
+                    }
+                });
+            } catch (MalformedURLException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (IOException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (ParserException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
             }
-        } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        } catch (ParserException e1) {
-            e1.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
 
-        return result;
+        public abstract void finished(ArrayList<String> streets);
     }
 
     private ArrayList<String> getAlphabeticHrefs(String siteUrl) throws IOException, ParserException {
