@@ -39,7 +39,8 @@ public class DatabaseManager {
     
     public static int getStreetID(String street){
         try {
-            ResultSet resultSet = getStatement().executeQuery("SELECT * FROM streets WHERE name LIKE " + street);
+            ResultSet resultSet = getStatement().executeQuery("SELECT * FROM streets WHERE name LIKE '" + street.trim() + "'");
+            System.out.println("SELECT * FROM streets WHERE name LIKE '" + street.trim() + "'");
             if(resultSet.next()){
                 return resultSet.getInt("id");
             }

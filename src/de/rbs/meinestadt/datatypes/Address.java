@@ -28,9 +28,9 @@ public class Address {
         if (hnrSplit.matches("[\\d]+")){ //no letter
             hnr = Integer.parseInt(hnrSplit);
             hasHnrChar = false;
+            street = new Street(analysed.substring(0, analysed.length() - hnrSplit.length()));
         }
         else {
-
                 hnrChar = hnrSplit.trim().charAt(hnrSplit.length() - 1); //get last char
                 hasHnrChar = true;
                 System.out.println("hnr_char: " + hnrChar);

@@ -13,10 +13,11 @@ public class Street {
     
     String name;
     int id;
-
+    
     public Street(String name) {
-        this.name = name;
+        this.name = name.trim();
         this.id = DatabaseManager.getStreetID(name);
+        System.out.println("found id " +  id);
     }
 
     public Street(String name, int id) {
