@@ -12,6 +12,7 @@ public class Address {
     int region_id;
     int hnr;
     char hnrChar;
+    Boolean hasHnrChar = false;
 
     public Address(Street street, int region_id, int hnr, char hnrChar) {
         this.street = street;
@@ -26,32 +27,16 @@ public class Address {
         String hnrSplit = frontSplit[frontSplit.length - 1];
         if (hnrSplit.matches("[\\d]+")){ //no letter
             hnr = Integer.parseInt(hnrSplit);
-            hnrChar = ' ';
+            hasHnrChar = false;
         }
         else {
-            int hnrLenght = hnrSplit.length();
-            hnrChar = hnrSplit.trim().charAt(hnrLenght - 1); //get last char
-            System.out.println("hnr_char: " + hnrChar);
-            try{
-                if(hnrLenght != 1){
-                    hnr = Integer.parseInt(hnrSplit.substring(0, hnrLenght - 2).trim());
-                    System.out.println("M1 - hnr: " + hnr);
-                    street = new Street(analysed.substring(0, analysed.length() - frontSplit[frontSplit.length - 1].length()));
-                }
-                else{
-                    hnr = Integer.parseInt(frontSplit[frontSplit.length - 2 ].trim());
-                    System.out.println("M2 - hnr: " + hnr);
-                }
-            }
-            catch (NumberFormatException e){
-                e.printStackTrace();
-            }
+
+                hnrChar = hnrSplit.trim().charAt(hnrSplit.length() - 1); //get last char
+                hasHnrChar = true;
+                System.out.println("hnr_char: " + hnrChar);
+                hnr = Integer.parseInt(frontSplit[frontSplit.length - 2 ].trim());
+                System.out.println("M2 - hnr: " + hnr);
         }
-
-
-
-
-        
     }
 
     public Street getStreet() {

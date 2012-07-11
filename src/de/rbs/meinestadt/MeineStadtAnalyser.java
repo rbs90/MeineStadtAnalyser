@@ -23,7 +23,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class MeineStadtAnalyser {
 
@@ -37,21 +36,9 @@ public class MeineStadtAnalyser {
     private int running = 0;
     private int done = 0;
     private final ArrayList<BuildingDataExtractor> runningThreads;
-    private static Statement stat;
-    private static Connection conn;
 
     public MeineStadtAnalyser() {
         runningThreads = new ArrayList<BuildingDataExtractor>();
-        try {
-            Class.forName("org.sqlite.JDBC");
-            conn = DriverManager.getConnection("jdbc:sqlite:test.db");
-            stat = conn.createStatement();
-        } catch (SQLException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }
-
     }
 
     public void start() throws IOException, ParserException, InterruptedException, ClassNotFoundException, SQLException {
@@ -59,19 +46,46 @@ public class MeineStadtAnalyser {
         String base = "hohenstein-ernstthal";
 
         //get streets
+        /*
         ArrayList<String> nearCitys = getNearCitys(base);
         System.out.println("nearcitys: " + nearCitys.size());
         nearCitys.add(base);
 
-        for(String city : nearCitys){
+
+
+        PreparedStatement statement = DatabaseManager.getConnection().prepareStatement("INSERT INTO streets(name, region) VALUES (?, ?)");
+        PreparedStatement cityAdd = DatabaseManager.getConnection().prepareStatement("INSERT INTO region(name) VALUES (?)");
+
+        for(int i = 0; i < nearCitys.size(); i++){
+            String city = nearCitys.get(i);
+            cityAdd.setString(1, city);
+            cityAdd.addBatch();
+
             ArrayList<String> streets = getStreets(city);
-            System.out.println("Found " + streets.size() + " streets for " + city);
+            for(String street : streets){
+                statement.setString(1, street);
+                statement.setInt(2, i+1);
+                statement.addBatch();
+            }
         }
 
-        //ArrayList<String> alphabeticHrefs = getAlphabeticHrefs(baseURL + "/" + city);
-        //getBranches(baseURL, alphabeticHrefs);
-        //ArrayList<SpecialBuilding> buildings = getSpecialBuildings(branches);
-        //writeBuildings2DB(buildings);
+        System.out.println("Starte citys");
+        cityAdd.executeBatch();
+        System.out.println("Ende citys, start streets");
+        statement.executeBatch();
+        System.out.println("Ende streets");
+
+
+
+        System.out.println("ENDE Straﬂen, BEGIN SpecialBuildings");
+
+
+         */
+
+        ArrayList<String> alphabeticHrefs = getAlphabeticHrefs(baseURL + "/" + base);
+        ArrayList<Branch> branches = getBranches(baseURL, alphabeticHrefs);
+        ArrayList<SpecialBuilding> buildings = getSpecialBuildings(branches);
+        writeBuildings2DB(buildings);
     }
 
     private ArrayList<String> getNearCitys(String city) {
@@ -223,7 +237,7 @@ public class MeineStadtAnalyser {
         return hrefs;
     }
 
-    private void getBranches(final String base_url, ArrayList<String> alphabetHrefs) throws IOException, ParserException {
+    private ArrayList<Branch> getBranches(final String base_url, ArrayList<String> alphabetHrefs) throws IOException, ParserException {
 
         final ArrayList<String> branchHrefs = new ArrayList<String>();
         final ArrayList<String> categoryHrefs = alphabetHrefs;
@@ -270,24 +284,24 @@ public class MeineStadtAnalyser {
 
         } while (!categoryHrefs.isEmpty());
 
-        try {
-            PreparedStatement preparedStatement = conn.prepareStatement("INSERT INTO branches(name, href) VALUES (?, ?)");
+        return branchList;
+    }
 
-            for(Branch branch : branchList){
+    public void writeBranches2DB(ArrayList<Branch> branches){
+
+        try {
+            PreparedStatement preparedStatement = DatabaseManager.getConnection().prepareStatement("INSERT INTO branches(name, href) VALUES (?, ?)");
+
+            for(Branch branch : branches){
                 preparedStatement.setString(1, branch.getName());
                 preparedStatement.setString(2, branch.getHref());
                 preparedStatement.addBatch();
             }
-
-            conn.setAutoCommit(false);
-            int[] ints = preparedStatement.executeBatch();
-            conn.setAutoCommit(true);
-            System.out.println(Arrays.toString(ints));
+            preparedStatement.executeBatch();
 
         } catch (SQLException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
         }
-
     }
 
     public abstract class LetterParser extends NodeVisitor {
@@ -321,11 +335,11 @@ public class MeineStadtAnalyser {
         public abstract void branchFound(Branch branch);
     }
 
-    private ArrayList<SpecialBuilding> getSpecialBuildings(final ArrayList<String> urls) throws IOException, ParserException, InterruptedException {
+    private ArrayList<SpecialBuilding> getSpecialBuildings(final ArrayList<Branch> branches) throws IOException, ParserException, InterruptedException {
 
         int started = 0;
         done = 0;
-        for(int i = 0; i < urls.size(); i++){
+        for(int i = 0; i < branches.size(); i++){
 
             try {
                 while(running > 10){ Thread.sleep(100); }
@@ -336,15 +350,13 @@ public class MeineStadtAnalyser {
             started ++;
             running ++;
 
-            System.out.println("s" + started);
-            BuildingDataExtractor buildingDataExtractor = new BuildingDataExtractor(urls.get(i)) {
+            BuildingDataExtractor buildingDataExtractor = new BuildingDataExtractor(branches.get(i).getHref()) {
                 @Override
                 public void finished() {
-                    System.out.print("f");
                     running--;
                     done++;
                     runningThreads.remove(this);
-                    fireStatusChangeEvent(StatusType.BUILDING_SEARCH, "Suche Geb‰ude...", done, urls.size());
+                    fireStatusChangeEvent(StatusType.BUILDING_SEARCH, "Suche Geb‰ude...", done, branches.size());
                 }
             };
             runningThreads.add(buildingDataExtractor);
@@ -352,7 +364,7 @@ public class MeineStadtAnalyser {
 
         }
 
-        while(done < urls.size()) { Thread.sleep(100); };
+        while(done < branches.size()) { Thread.sleep(100); };
 
         return buildings;
         
@@ -384,6 +396,7 @@ public class MeineStadtAnalyser {
                 });
             } catch (Exception e){
                 System.out.println("ERROR @ " + url);
+                e.printStackTrace();
             }
             finished();
         }
@@ -392,10 +405,10 @@ public class MeineStadtAnalyser {
     }
     
     public void writeBuildings2DB(ArrayList<SpecialBuilding> specialBuildings) throws ClassNotFoundException, SQLException {
-        stat.executeUpdate("drop table if exists specialBuildings;");
-        stat.executeUpdate("create table specialBuildings (id INTEGER PRIMARY KEY, name VARCHAR, street_id INTEGER, hnr VARCHAR, branch_id INTEGER );");
+        DatabaseManager.getStatement().executeUpdate("drop table if exists specialBuildings;");
+        DatabaseManager.getStatement().executeUpdate("create table specialBuildings (id INTEGER PRIMARY KEY, name VARCHAR, street_id INTEGER, hnr VARCHAR, branch_id INTEGER );");
         String statement = "INSERT INTO specialBuildings(name, branch_id, street_id, hnr) VALUES(?, ?, ?, ?)";
-        PreparedStatement preparedStatement = conn.prepareStatement(statement);
+        PreparedStatement preparedStatement = DatabaseManager.getConnection().prepareStatement(statement);
 
         for(int k = 0; k < specialBuildings.size(); k+=10){
             for(int i = k; i < (k + 10); i++){

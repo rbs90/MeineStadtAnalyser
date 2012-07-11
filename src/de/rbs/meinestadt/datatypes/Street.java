@@ -1,5 +1,7 @@
 package de.rbs.meinestadt.datatypes;
 
+import de.rbs.meinestadt.DatabaseManager;
+
 /**
  * Created by IntelliJ IDEA.
  * User: rbs
@@ -13,6 +15,12 @@ public class Street {
     int id;
 
     public Street(String name) {
+        this.name = name;
+        this.id = DatabaseManager.getStreetID(name);
+    }
+
+    public Street(String name, int id) {
+        this.id = id;
         this.name = name;
     }
 

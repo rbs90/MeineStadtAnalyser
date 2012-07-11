@@ -19,8 +19,10 @@ public class Main {
     public static void main(String[] args) throws IOException, ParserException, InterruptedException, ClassNotFoundException, SQLException {
 
 
-        //System.setProperty("proxyPort","8123");
-        //System.setProperty("proxyHost","192.168.1.100");
+        DatabaseManager.init();
+
+        System.setProperty("proxyPort","8123");
+        System.setProperty("proxyHost","192.168.1.100");
 
         final ProgressWindow progressWindow = new ProgressWindow();
 
