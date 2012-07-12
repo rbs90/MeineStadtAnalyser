@@ -54,4 +54,13 @@ public class DatabaseManager {
         return -1;
 
     }
+
+	public static void close() {
+		try {
+			conn.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }
