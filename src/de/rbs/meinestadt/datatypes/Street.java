@@ -13,16 +13,19 @@ public class Street {
     
     String name;
     int id;
+    int region_id;
     
-    public Street(String name) {
+    public Street(String name, int region_id) {
         this.name = name.trim();
-        this.id = DatabaseManager.getStreetID(name);
-        System.out.println("found id " +  id);
+        this.id = DatabaseManager.getStreetID(name, region_id);
+        this.region_id = region_id;
     }
 
-    public Street(String name, int id) {
+    public Street(String name, int id, int region_id) {
         this.id = id;
         this.name = name;
+        this.region_id = region_id;
+        
     }
 
     public String getName() {

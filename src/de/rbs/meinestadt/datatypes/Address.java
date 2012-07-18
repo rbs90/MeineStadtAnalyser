@@ -15,6 +15,7 @@ public class Address {
 	private final static Pattern STREET_WITH_HNR = Pattern.compile("(\\D+)(\\d+)");
 	private final static Pattern STREET_WITH_HNR_AND_LETTER = Pattern.compile("(\\D+)(\\d+)\\s(\\D)");
 	private final static Pattern STREET_WITH_HNR_AND_LETTER_CONNECTED = Pattern.compile("(\\D+)(\\d+)(\\D)");
+	private final static Pattern STREET_WITH_HNRS = Pattern.compile("(\\D+)(\\d+)\\s?-\\s?(\\d+)");
 	
 	Street street;
     int region_id;
@@ -30,7 +31,7 @@ public class Address {
         this.hnrChar = hnrChar;
     }
     
-    public Address(String analyseString) {
+    public Address(String analyseString, int region_id) {
         String analysed = analyseString.replaceAll("Str\\.", "Straﬂe").replaceAll("str\\.", "straﬂe");
         String street = analysed.split(",")[0];
         
@@ -38,7 +39,7 @@ public class Address {
         if(street.matches(STREET_WITH_HNR.pattern())){ //Straﬂenname 105
         	Matcher matcher = STREET_WITH_HNR.matcher(street);
         	if(matcher.find()){
-        		this.street = new Street(matcher.group(1));
+        		this.street = new Street(matcher.group(1), region_id);
         		hnr = Integer.parseInt(matcher.group(2));
         		hasHnr = true;
         	}
@@ -46,7 +47,7 @@ public class Address {
         else if(street.matches(STREET_WITH_HNR_AND_LETTER.pattern())){ //Straﬂenname 105 a
         	Matcher matcher = STREET_WITH_HNR_AND_LETTER.matcher(street);
         	if(matcher.find()){
-        		this.street = new Street(matcher.group(1));
+        		this.street = new Street(matcher.group(1), region_id);
         		hnr = Integer.parseInt(matcher.group(2));
         		hasHnr = true;
         		hnrChar = matcher.group(3).charAt(0);
@@ -54,19 +55,28 @@ public class Address {
         	}
         }
         else if(street.matches(STREET_WITHOUT_HNR.pattern())){ //Straﬂenname
-        	this.street = new Street(street.trim());
+        	this.street = new Street(street.trim(), region_id);
         }
         else if(street.matches(STREET_WITH_HNR_AND_LETTER_CONNECTED.pattern())){ //Straﬂenname
         	Matcher matcher = STREET_WITH_HNR_AND_LETTER_CONNECTED.matcher(street);
         	if(matcher.find()){
-        		this.street = new Street(matcher.group(1));
+        		this.street = new Street(matcher.group(1), region_id);
         		hnr = Integer.parseInt(matcher.group(2));
         		hasHnr = true;
         		hnrChar = matcher.group(3).charAt(0);
         		hasHnrChar = true;
         	}
         }
-        else
+        else if(street.matches(STREET_WITH_HNRS.pattern())){ //Straﬂenname
+        	Matcher matcher = STREET_WITH_HNRS.matcher(street);
+        	if(matcher.find()){
+        		this.street = new Street(matcher.group(1), region_id);
+        		hnr = Integer.parseInt(matcher.group(2));
+        		hasHnr = true;
+        		hasHnrChar = false;
+        	}
+        }
+        else 
         	System.out.println("INVALID STREET: " + street);
     }
 

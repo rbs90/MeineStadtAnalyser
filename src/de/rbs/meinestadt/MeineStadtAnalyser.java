@@ -45,8 +45,6 @@ public class MeineStadtAnalyser {
         String baseURL = "http://home.meinestadt.de";
         String base = "hohenstein-ernstthal";
 
-        //get streets
-        /*
         ArrayList<String> nearCitys = getNearCitys(base);
         System.out.println("nearcitys: " + nearCitys.size());
         nearCitys.add(base);
@@ -80,11 +78,9 @@ public class MeineStadtAnalyser {
         System.out.println("ENDE Straﬂen, BEGIN SpecialBuildings");
 
 
-         */
-
         ArrayList<String> alphabeticHrefs = getAlphabeticHrefs(baseURL + "/" + base);
         ArrayList<Branch> branches = getBranches(baseURL, alphabeticHrefs);
-        ArrayList<SpecialBuilding> buildings = getSpecialBuildings(branches);
+        ArrayList<SpecialBuilding> buildings = getSpecialBuildings(branches, 20);
         writeBuildings2DB(buildings);
     }
 
@@ -335,7 +331,7 @@ public class MeineStadtAnalyser {
         public abstract void branchFound(Branch branch);
     }
 
-    private ArrayList<SpecialBuilding> getSpecialBuildings(final ArrayList<Branch> branches) throws IOException, ParserException, InterruptedException {
+    private ArrayList<SpecialBuilding> getSpecialBuildings(final ArrayList<Branch> branches, int region_id) throws IOException, ParserException, InterruptedException {
 
         int started = 0;
         done = 0;
@@ -350,7 +346,7 @@ public class MeineStadtAnalyser {
             started ++;
             running ++;
 
-            BuildingDataExtractor buildingDataExtractor = new BuildingDataExtractor(branches.get(i).getHref()) {
+            BuildingDataExtractor buildingDataExtractor = new BuildingDataExtractor(branches.get(i).getHref(), region_id) {
                 @Override
                 public void finished() {
                     running--;
@@ -373,10 +369,11 @@ public class MeineStadtAnalyser {
     abstract class BuildingDataExtractor extends Thread {
 
         private URL url;
+        private int region_id;
 
-        BuildingDataExtractor(String scanUrl) throws MalformedURLException {
+        BuildingDataExtractor(String scanUrl, int region_id) throws MalformedURLException {
             url = new URL("http://branchenbuch.meinestadt.de" + scanUrl);
-
+            this.region_id = region_id;
         }
 
         @Override
@@ -385,10 +382,10 @@ public class MeineStadtAnalyser {
             try{
                 URLConnection urlConnection = url.openConnection();
                 Parser parser = new Parser(new Lexer(new Page(urlConnection)));
-                parser.visitAllNodesWith(new BranchParser() {
+                parser.visitAllNodesWith(new BranchParser(region_id) {
                     @Override
                     public void buildingFound(SpecialBuilding building) {
-                        synchronized (building){
+                        synchronized (buildings){
                             if(!buildings.containsBuilding(building))
                                 buildings.add(building);
                         }
@@ -404,6 +401,11 @@ public class MeineStadtAnalyser {
         public abstract void finished();
     }
     
+    /**
+     * @param specialBuildings
+     * @throws ClassNotFoundException
+     * @throws SQLException
+     */
     public void writeBuildings2DB(ArrayList<SpecialBuilding> specialBuildings) throws ClassNotFoundException, SQLException {
         DatabaseManager.getStatement().executeUpdate("drop table if exists specialBuildings;");
         DatabaseManager.getStatement().executeUpdate("create table specialBuildings (id INTEGER PRIMARY KEY, name VARCHAR, street_id INTEGER, hnr VARCHAR, branch_id INTEGER );");
@@ -428,11 +430,13 @@ public class MeineStadtAnalyser {
 
     public abstract class BranchParser extends NodeVisitor {
         //TODO: support multiple sites
-        
-        //TODO: insert branch saving
         //TODO: insert Branch_id
         int branch_id = 0;
-
+        int region_id = -1;
+        
+        public BranchParser(int region_id) {
+			this.region_id = region_id;
+		}
 
         @Override
         public void visitTag(Tag tag) {
@@ -442,7 +446,7 @@ public class MeineStadtAnalyser {
                 Tag nameTag = (Tag) children.elementAt(1).getChildren().extractAllNodesThatMatch(new HasAttributeFilter("class", "katalogtitel-gratis")).elementAt(0);
                 String name = nameTag.getChildren().toHtml();
                 String address = addressTag.getChildren().toHtml();
-                buildingFound(new SpecialBuilding(name , address, branch_id));
+                buildingFound(new SpecialBuilding(name , address, branch_id, region_id));
             }
         }
 

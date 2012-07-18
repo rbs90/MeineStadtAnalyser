@@ -12,8 +12,10 @@ public class SpecialBuilding {
     private int branch_id;
     private String name;
 
-    public SpecialBuilding(String name, String addressAnalyse, int branch_id) {
-        this.address = new Address(addressAnalyse);
+    public SpecialBuilding(String name, String addressAnalyse, int branch_id, int region_id) {
+        this.address = new Address(addressAnalyse, region_id);
+        this.branch_id = branch_id;
+        this.name = name;
     }
 
     public Address getAddress() {
